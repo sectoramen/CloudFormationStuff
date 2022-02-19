@@ -11,4 +11,4 @@ A cloudformation stack to run prowler on an EC2 instance. The stack creates the 
 - **EC2 Instance:** Patched and with all the requirements to run prowler. Prowler's output and log are sent to S3 and this instance will shut down once prowler completes.
 - **SNS:** topic, subscription and policy for email notification. Check your inbox while the CloudFormation stack is creating resources and accept the topic subscription before prowler completes its execution to receive notification.
 
-You can access the EC2 instace using SSN Session Manager if you want to troubleshoot or as needed. Download the files from the S3 bucket after receving the email notification and then delete the files. Once the files are deleted from S3, you can safely delete the CloudFormation template, which will remove all resources.
+You can access the EC2 instace using SSM Session Manager if you want to troubleshoot or as needed. Download the files from the S3 bucket after receving the email notification and then delete the files. Once the files are deleted from S3, you can safely delete the CloudFormation template, which will remove all resources.
