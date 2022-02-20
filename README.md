@@ -2,9 +2,15 @@
 
 Automation makes life easier. Enjoy my cloudformation stacks!
 
-## ProwlerEC2toS3withSSMandSQS
+## ProwlerEC2toS3withSSMandSQS-3Modes
 
-A CloudFormation stack to run prowler on an EC2 instance. Prowler will run on the same account you are deploying the stack on. The stack creates the following Resources:
+A CloudFormation stack to run prowler on an EC2 instance. Depending on the CloudFormation parameters used, prowler will run as follows:
+
+- **if AWSOrganizations** is set to **true** then the AWSAccounts Parameter will be ignored. This parameter takes over the **AWSAccounts** parameter. In this case you must run this CloudFormation stack on the AWS root account. Prowler will run against all accounts in the Organization
+- **if: AWSOrganizations** is set to **false** and **AWSAccounts** contains one or more AWS accounts (separated by space), then Prowler will run against the listed accounts.
+- **if AWSOrganizations** is set to **false** and **AWSAccounts** is **empty**, then Prowler will run on the same account you are deploying the stack on.
+
+The stack creates the following Resources:
 
 - **All the Networking components:** a VPC, a Public and Private Subnet, an Internet Gateway, a NAT Gateway, and the Routing Tables.
 - **All the Security Stuff:** SG with no inbound and only TCP 443 outbound, IAM Policy and Role to Run Prowler locally with Assume Role and access the EC2 instance via SSM session manager.
@@ -14,13 +20,21 @@ A CloudFormation stack to run prowler on an EC2 instance. Prowler will run on th
 
 You can access the EC2 instance using SSM Session Manager if you want to troubleshoot or as needed. Download the files from the S3 bucket after receiving the email notification and then delete the files. Once the files are deleted from S3, you can safely delete the CloudFormation template, which will remove all resources.
 
-## ProwlerMultiAcctEC2toS3withSSMandSQS
+**The next three CloudFormation stacks break down the one above. I started with the three below and then combined them to the one above while I was learning.**
+
+### ProwlerEC2toS3withSSMandSQS
+
+Same as above but only for the account in which the CLoudFormation stack is executed. You must have the right permissions and be able to assume role on these accounts.
+
+**NOTE**: Do NOT add -R and -A as Prowler parameters.
+
+### ProwlerMultiAcctEC2toS3withSSMandSQS
 
 Same as above but for multiple accounts specified as CloudFormation parameters. You can specify a *space* separated list of accounts to scan. You must have the right permissions and be able to assume role on these accounts.
 
 **NOTE**: Do NOT add -R and -A as Prowler parameters.
 
-## ProwlerOrgEC2toS3withSSMandSQS
+### ProwlerOrgEC2toS3withSSMandSQS
 
 Same as above but for multiple accounts in a AWS Organizations. You must have the right permissions and be able to assume role on these accounts.
 

@@ -6,7 +6,7 @@ Parameters:
       - yes
       - no
     Default: no
-    Description: If this is set to YES, then the AWS ACcountds Parameter will be ignored. In this case you must rin this CloudFormation stack on the AWS root account
+    Description: If this is set to true, then the AWSAccounts Parameter will be ignored. In this case you must run this CloudFormation stack on the AWS root account
   ProwlerOption:
     Type: String
     MaxLength: 128
