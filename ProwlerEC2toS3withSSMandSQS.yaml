@@ -4,7 +4,7 @@ Parameters:
     Type: String
     MaxLength: 128
     Description: Prolwer parameters
-    Default: -M csv -s -n > ./output/prowler.log   
+    Default: -M csv -s -n 
   EmailAddress:
     Type: String
     MaxLength: 128
@@ -169,7 +169,7 @@ Resources:
               cd prowler
               #the next line is needed or prowler execution will fail with a: No such file or directory
               mkdir output
-              ./prowler ${prowler_options} > ./output/prowler.log
+              ./prowler ${prowler_options} >> ./output/prowler.log
               aws s3 cp ./output s3://${bucket_name} --recursive
               sudo shutdown -h now
             - bucket_name: !Ref S3Bucket

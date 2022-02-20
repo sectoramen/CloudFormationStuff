@@ -4,7 +4,7 @@ Parameters:
     Type: String
     MaxLength: 128
     Description: Prolwer parameters. Do NOT add -R and -A here as they are already added using the CloudFormation parameters.
-    Default: -M csv -s -n > ./output/prowler.log   
+    Default: -M csv -s -n
   EmailAddress:
     Type: String
     MaxLength: 128
