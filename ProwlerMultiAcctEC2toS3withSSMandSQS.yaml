@@ -3,7 +3,7 @@ Parameters:
   ProwlerOption:
     Type: String
     MaxLength: 128
-    Description: Prolwer parameters
+    Description: Prolwer parameters. Do NOT add -R and -A here as they are already added using the CloudFormation parameters.
     Default: -M csv -s -n > ./output/prowler.log   
   EmailAddress:
     Type: String
@@ -12,6 +12,10 @@ Parameters:
   AWSAccounts:
     Type: String
     Description: Space separated list of AWS accounts to scan, i,e, 01234567890 1234567890 2345678901
+  ProwlerRole:
+    Type: String
+    Default: ProwlerExecRole
+    Description: Specify the role to assume
   LatestAmiId:
     Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
     Default: '/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2'
@@ -174,12 +178,13 @@ Resources:
               mkdir output
               for account in ${aws_accounts}
               do
-                ./prowler ${prowler_options} > ./output/prowler.log
+                ./prowler ${prowler_options} -A $account -R ${prowler_role} >> ./output/prowler.log
               done
               aws s3 cp ./output s3://${bucket_name} --recursive
               sudo shutdown -h now
             - aws_accounts: !Ref AWSAccounts
               prowler_options: !Ref ProwlerOption
+              prowler_role: !Ref ProwlerRole
               bucket_name: !Ref S3Bucket
       IamInstanceProfile: !Ref ProwlerProfile
       ImageId: !Ref LatestAmiId
