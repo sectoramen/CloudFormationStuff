@@ -2,7 +2,7 @@
 
 Automation makes life easier. Enjoy my cloudformation stacks!
 
-## ProwlerOnEC2
+## ProwlerEC2toS3withSSMandSQS
 
 A CloudFormation stack to run prowler on an EC2 instance. The stack creates the following Resources:
 
@@ -13,3 +13,7 @@ A CloudFormation stack to run prowler on an EC2 instance. The stack creates the 
 - **SNS:** topic, subscription and policy for email notification. Check your inbox while the CloudFormation stack is creating resources and accept the topic subscription before prowler completes its execution to receive notification.
 
 You can access the EC2 instance using SSM Session Manager if you want to troubleshoot or as needed. Download the files from the S3 bucket after receiving the email notification and then delete the files. Once the files are deleted from S3, you can safely delete the CloudFormation template, which will remove all resources.
+
+## ProwlerMultiAcctEC2toS3withSSMandSQS
+
+Same as above bot for multiple accounts.
