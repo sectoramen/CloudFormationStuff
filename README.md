@@ -5,6 +5,7 @@ Automation makes life easier. Enjoy my cloudformation stacks!
 ## ProwlerOnEC2
 
 A CloudFormation stack to run prowler on an EC2 instance. The stack creates the following Resources:
+
 - **All the Networking components:** a VPC, a Public and Private Subnet, an Internet Gateway, a NAT Gateway, and the Routing Tables.
 - **All the Security Stuff:** SG with no inbound and only TCP 443 outbound, IAM Policy and Role to Run Prowler locally with Assume Role and access the EC2 instance via SSM session manager.
 - **S3 Bucket:** to store the prowler output and log. The bucket is private and it will trigger an Email SNS notification when the files are ready
