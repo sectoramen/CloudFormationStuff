@@ -16,6 +16,12 @@ You can access the EC2 instance using SSM Session Manager if you want to trouble
 
 ## ProwlerMultiAcctEC2toS3withSSMandSQS
 
-Same as above but for multiple accounts. You can specify a *space* separated list of accounts to scan. You must have the right permissions and be able to assume role on these accounts.
+Same as above but for multiple accounts specified as CloudFormation parameters. You can specify a *space* separated list of accounts to scan. You must have the right permissions and be able to assume role on these accounts.
 
-**NOTE**: Do NOT add -R and -A as Prowler parameters as they are added.
+**NOTE**: Do NOT add -R and -A as Prowler parameters.
+
+## ProwlerOrgEC2toS3withSSMandSQS
+
+Same as above but for multiple accounts in a AWS Organizations. You must have the right permissions and be able to assume role on these accounts.
+
+**NOTE**: This CloudFormation stack must be run on the root account. Do NOT add -R and -A as Prowler parameters.
