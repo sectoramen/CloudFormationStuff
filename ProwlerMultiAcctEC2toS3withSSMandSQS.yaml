@@ -9,6 +9,9 @@ Parameters:
     Type: String
     MaxLength: 128
     Description: CHECK YOUR INBOX! - TO RECEIVE NOTIFICATIONS YOU MUST ACCEPT THE TOPIC SUBSCRIPTION BEFORE PROWLER COMPLETES - This is the Email address to send Notification When the Prowler Report is Ready
+  AWSAccounts:
+    Type: String
+    Description: Space separated list of AWS accounts to scan, i,e, 01234567890 1234567890 2345678901
   LatestAmiId:
     Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
     Default: '/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2'
@@ -169,11 +172,15 @@ Resources:
               cd prowler
               #the next line is needed or prowler execution will fail with a: No such file or directory
               mkdir output
-              ./prowler ${prowler_options} > ./output/prowler.log
+              for account in ${aws_accounts}
+              do
+                ./prowler ${prowler_options} > ./output/prowler.log
+              done
               aws s3 cp ./output s3://${bucket_name} --recursive
               sudo shutdown -h now
-            - bucket_name: !Ref S3Bucket
+            - aws_accounts: !Ref AWSAccounts
               prowler_options: !Ref ProwlerOption
+              bucket_name: !Ref S3Bucket
       IamInstanceProfile: !Ref ProwlerProfile
       ImageId: !Ref LatestAmiId
       InstanceType: !Ref InstanceTypeT2
