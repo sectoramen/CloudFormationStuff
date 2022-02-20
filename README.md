@@ -4,7 +4,7 @@ Automation makes life easier. Enjoy my cloudformation stacks!
 
 ## ProwlerEC2toS3withSSMandSQS
 
-A CloudFormation stack to run prowler on an EC2 instance. The stack creates the following Resources:
+A CloudFormation stack to run prowler on an EC2 instance. Prowler will run on the same account you are deploying the stack on. The stack creates the following Resources:
 
 - **All the Networking components:** a VPC, a Public and Private Subnet, an Internet Gateway, a NAT Gateway, and the Routing Tables.
 - **All the Security Stuff:** SG with no inbound and only TCP 443 outbound, IAM Policy and Role to Run Prowler locally with Assume Role and access the EC2 instance via SSM session manager.
@@ -16,4 +16,4 @@ You can access the EC2 instance using SSM Session Manager if you want to trouble
 
 ## ProwlerMultiAcctEC2toS3withSSMandSQS
 
-Same as above but for multiple accounts.
+Same as above but for multiple accounts. You can specify a *space* separated list of accounts to scan. You must have the right permissions and be able to assume role on these accounts.
