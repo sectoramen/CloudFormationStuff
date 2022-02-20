@@ -16,4 +16,4 @@ You can access the EC2 instance using SSM Session Manager if you want to trouble
 
 ## ProwlerMultiAcctEC2toS3withSSMandSQS
 
-Same as above bot for multiple accounts.
+Same as above but for multiple accounts.
