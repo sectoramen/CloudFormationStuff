@@ -3,9 +3,9 @@ Parameters:
   AWSOrganizations:
     Type: String
     AllowedValues:
-      - yes
-      - no
-    Default: no
+      - YES
+      - NO
+    Default: NO
     Description: If this is set to true, then the AWSAccounts Parameter will be ignored. In this case you must run this CloudFormation stack on the AWS root account
   ProwlerOption:
     Type: String
@@ -15,7 +15,8 @@ Parameters:
   EmailAddress:
     Type: String
     MaxLength: 128
-    Description: CHECK YOUR INBOX! - TO RECEIVE NOTIFICATIONS YOU MUST ACCEPT THE TOPIC SUBSCRIPTION BEFORE PROWLER COMPLETES - This is the Email address to send Notification When the Prowler Report is Ready
+    MinLength: 7
+    Description: REQUIRED - CHECK YOUR INBOX! - TO RECEIVE NOTIFICATIONS YOU MUST ACCEPT THE TOPIC SUBSCRIPTION BEFORE PROWLER COMPLETES - This is the Email address to send Notification When the Prowler Report is Ready
   AWSAccounts:
     Type: String
     Description: Space separated list of AWS accounts to scan, i,e, 01234567890 1234567890 2345678901. This is ignored if you set AWSOrganizations to YES.
@@ -158,7 +159,7 @@ Resources:
       - Key: Name
         Value: ProwlerSubnet  
 # EC2 Instances
-  ProwlerStation:
+  ProwlerStation7:
     Type: 'AWS::EC2::Instance'
     DependsOn: 
       - NatGateway
@@ -183,22 +184,19 @@ Resources:
               cd prowler
               #the next line is needed or prowler execution will fail with a: No such file or directory
               mkdir output
-              if [[ ${aws_organizations} != "" ]];
+              if [ ${aws_organizations} == true ];
                 then
-                  echo "Using AWS Organizations" >> ./output/prowler.log
                   for account in `aws organizations list-accounts --query 'Accounts[*].[Id]' --output text`
                   do
                     ./prowler ${prowler_options} -A $account -R ${prowler_role} >> ./output/prowler.log
-                  done                  
-              elif [[ ${aws_accounts} != "" ]];
+                  done               
+              elif [ ${aws_accounts} != "" ];
                 then 
-                  echo "Using the list of AWS Accounts provided as CloudFormation paramters" >> ./output/prowler.log
                   for account in ${aws_accounts}
                   do
                     ./prowler ${prowler_options} -A $account -R ${prowler_role} >> ./output/prowler.log
                   done        
               else
-                echo "Running prowler against this account" >> ./output/prowler.log
                 ./prowler ${prowler_options} >> ./output/prowler.log
               fi
               aws s3 cp ./output s3://${bucket_name} --recursive
