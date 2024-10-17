@@ -3,8 +3,8 @@ Parameters:
   ProwlerOption:
     Type: String
     MaxLength: 128
-    Description: Prolwer parameters. Do NOT add -R and -A here as they are already added using the CloudFormation parameters.
-    Default: -M csv -s -n
+    Description: Prolwer parameters. Do NOT add -R it already added using the CloudFormation parameters.
+    Default: aws
   EmailAddress:
     Type: String
     MaxLength: 128
@@ -15,7 +15,7 @@ Parameters:
     Description: Specify the role to assume
   LatestAmiId:
     Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
-    Default: '/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2'
+    Default: '/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64'
   InstanceTypeT2:
     Type: String
     Description: Choosing t2 micro to be frugal
@@ -25,7 +25,6 @@ Resources:
   S3Bucket:
     Type: AWS::S3::Bucket
     Properties: 
-      AccessControl: Private
       BucketEncryption:
           ServerSideEncryptionConfiguration:
             - ServerSideEncryptionByDefault:
@@ -135,7 +134,7 @@ Resources:
       AvailabilityZone: !Select [ 0, !GetAZs ]    # Get the first AZ in the list 
       Tags:
       - Key: Name
-        Value: Public Sbunet    
+        Value: Public Subnet
   # Subnet Private
   ProwlerSubnet:
     Type: AWS::EC2::Subnet
@@ -168,14 +167,14 @@ Resources:
               sudo yum install -y python3 jq git
               sudo rm /usr/bin/python
               sudo ln -s /usr/bin/python3 /usr/bin/python
-              sudo pip3 install detect-secrets==1.0.3
-              git clone https://github.com/toniblyx/prowler
+              pip3 install prowler
+              mkdir prowler
               cd prowler
               #the next line is needed or prowler execution will fail with a: No such file or directory
               mkdir output
               for account in `aws organizations list-accounts --query 'Accounts[*].[Id]' --output text`
               do
-                ./prowler ${prowler_options} -A $account -R ${prowler_role} >> ./output/prowler.log
+                ./prowler ${prowler_options} -R "arn:aws:iam::$account:role/${prowler_role}" >> ./output/prowler.log
               done
               aws s3 cp ./output s3://${bucket_name} --recursive
               sudo shutdown -h now
@@ -202,6 +201,7 @@ Resources:
         FromPort: 443
         ToPort: 443
         CidrIp: 0.0.0.0/0
+        Description: Allow all HTTPS outbound traffic to enable prowler scan.
       Tags:
         - Key: Name
           Value: ProwlerSG
@@ -229,19 +229,46 @@ Resources:
             - Effect: Allow
               Action:
                 - 'ds:ListAuthorizedApplications'
+                - 'account:Get*'
+                - 'apigateway:GET'
+                - 'appstream:Describe*'
+                - 'appstream:List*'
+                - 'backup:List*'
+                - 'cloudtrail:GetInsightSelectors'
+                - 'codeartifact:List*'
+                - 'codebuild:BatchGet*'
+                - 'codebuild:ListReportGroups'
+                - 'cognito-idp:GetUserPoolMfaConfig'
+                - 'dlm:Get*'
+                - 'drs:Describe*'
+                - 'ds:Get*'
+                - 'ds:Describe*'
+                - 'ds:List*'
+                - 'dynamodb:GetResourcePolicy'
                 - 'ec2:GetEbsEncryptionByDefault'
+                - 'ec2:GetSnapshotBlockPublicAccessState'
+                - 'ec2:GetInstanceMetadataDefaults'
                 - 'ecr:Describe*'
+                - 'ecr:GetRegistryScanningConfiguration'
                 - 'elasticfilesystem:DescribeBackupPolicy'
                 - 'glue:GetConnections'
-                - 'glue:GetSecurityConfiguration'
+                - 'glue:GetSecurityConfiguration*'
                 - 'glue:SearchTables'
-                - 'lambda:GetFunction'
+                - 'lambda:GetFunction*'
+                - 'logs:FilterLogEvents'
+                - 'lightsail:GetRelationalDatabases'
+                - 'macie2:GetMacieSession'
+                - 'macie2:GetAutomatedDiscoveryConfiguration'
                 - 's3:GetAccountPublicAccessBlock'
                 - 'shield:DescribeProtection'
                 - 'shield:GetSubscriptionState'
+                - 'securityhub:BatchImportFindings'
+                - 'securityhub:GetFindings'
                 - 'ssm:GetDocument'
+                - 'ssm-incidents:List*'
                 - 'support:Describe*'
                 - 'tag:GetTagKeys'
+                - 'wellarchitected:List*'
               Resource: '*'
         - PolicyName: ProwlerCopyToS3
           PolicyDocument:

@@ -11,7 +11,7 @@ Parameters:
     Type: String
     MaxLength: 128
     Description: Prolwer options. Do NOT add -R and -A here as they are already added using CloudFormation parameters.
-    Default: -M csv -s -n
+    Default: aws
   EmailAddress:
     Type: String
     MaxLength: 128
@@ -26,17 +26,16 @@ Parameters:
     Description: Specify the role to assume
   LatestAmiId:
     Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
-    Default: '/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2'
-  InstanceTypeT2:
+    Default: '/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64'
+  InstanceType:
     Type: String
     Description: Choosing t2 micro to be frugal
-    Default: t2.micro
+    Default: t3.large
 Resources:
   #S3 Bucket
   S3Bucket:
     Type: AWS::S3::Bucket
     Properties: 
-      AccessControl: Private
       BucketEncryption:
           ServerSideEncryptionConfiguration:
             - ServerSideEncryptionByDefault:
@@ -46,10 +45,39 @@ Resources:
         BlockPublicPolicy: true 
         IgnorePublicAcls: true 
         RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+        - Id: LoggingLifeCycle
+          Status: Enabled
+          ExpirationInDays: '365'
+          NoncurrentVersionExpirationInDays: '365'
       NotificationConfiguration:
         TopicConfigurations:
           - Event: s3:ObjectCreated:Put
-            Topic: !Ref MySNSTopic             
+            Topic: !Ref MySNSTopic
+
+  S3BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref S3Bucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !GetAtt ProwlerIAMRole.Arn
+            Action: s3:PutObject
+            Resource: !Sub "arn:${AWS::Partition}:s3:::${S3Bucket}/*"
+          - Sid: Deny non-HTTPS access
+            Effect: Deny
+            Principal: "*"
+            Action: s3:*
+            Resource:
+              - !Sub "arn:${AWS::Partition}:s3:::${S3Bucket}"
+              - !Sub "arn:${AWS::Partition}:s3:::${S3Bucket}/*"
+            Condition:
+              Bool:
+                aws:SecureTransport: "false"
   # Internet Gateway
   InternetGateway:
     Type: AWS::EC2::InternetGateway
@@ -146,7 +174,7 @@ Resources:
       AvailabilityZone: !Select [ 0, !GetAZs ]    # Get the first AZ in the list 
       Tags:
       - Key: Name
-        Value: Public Sbunet    
+        Value: Public Subnet
   # Subnet Private
   ProwlerSubnet:
     Type: AWS::EC2::Subnet
@@ -159,28 +187,38 @@ Resources:
       - Key: Name
         Value: ProwlerSubnet  
 # EC2 Instances
-  ProwlerStation7:
+  LaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateData:
+        MetadataOptions:
+          HttpTokens: required
+
+  ProwlerStation:
     Type: 'AWS::EC2::Instance'
     DependsOn: 
       - NatGateway
       - InternetGateway
-    Properties: 
+    Properties:
+      LaunchTemplate:
+        LaunchTemplateId:
+          Ref: LaunchTemplate
+        Version: "1"
+      Monitoring: true
       UserData:
         Fn::Base64:
           Fn::Sub:
             - |
               #!/bin/bash -x
+              sudo dnf upgrade -y
               cd /home/ec2-user
-              sudo yum update -y
-              sudo yum remove -y awscli
+              sudo dnf install -y jq git pip openssl-devel bzip2-devel libffi-devel gcc git zlib-devel
+              sudo yum remove awscli -y
               curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
               unzip awscliv2.zip
-              sudo ./aws/install
-              sudo yum install -y python3 jq git
-              sudo rm /usr/bin/python
-              sudo ln -s /usr/bin/python3 /usr/bin/python
-              sudo pip3 install detect-secrets==1.0.3
-              git clone https://github.com/toniblyx/prowler
+              sudo ./aws/install --bin-dir /usr/local/bin --install-dir /usr/local/aws-cli --update
+              pip install prowler
+              mkdir prowler
               cd prowler
               #the next line is needed or prowler execution will fail with a: No such file or directory
               mkdir output
@@ -188,18 +226,19 @@ Resources:
                 then
                   for account in `aws organizations list-accounts --query 'Accounts[*].[Id]' --output text`
                   do
-                    ./prowler ${prowler_options} -A $account -R ${prowler_role} >> ./output/prowler.log
+                    ./prowler ${prowler_options} -R "arn:aws:iam::$account:role/${prowler_role}" >> ./output/prowler.log
                   done               
               elif [ ${aws_accounts} != "" ];
                 then 
                   for account in ${aws_accounts}
                   do
-                    ./prowler ${prowler_options} -A $account -R ${prowler_role} >> ./output/prowler.log
+                    ./prowler ${prowler_options} -R "arn:aws:iam::$account:role/${prowler_role}" >> ./output/prowler.log
                   done        
               else
                 ./prowler ${prowler_options} >> ./output/prowler.log
               fi
-              aws s3 cp ./output s3://${bucket_name} --recursive
+              zip -r prowler.zip output/
+              aws s3 cp ./prowler.zip s3://${bucket_name}
               sudo shutdown -h now
             - aws_accounts: !Ref AWSAccounts
               aws_organizations: !Ref AWSOrganizations
@@ -208,7 +247,7 @@ Resources:
               bucket_name: !Ref S3Bucket
       IamInstanceProfile: !Ref ProwlerProfile
       ImageId: !Ref LatestAmiId
-      InstanceType: !Ref InstanceTypeT2
+      InstanceType: !Ref InstanceType
       SecurityGroupIds: 
         - !Ref ProwlerSG
       SubnetId: !Ref ProwlerSubnet
@@ -226,6 +265,7 @@ Resources:
         FromPort: 443
         ToPort: 443
         CidrIp: 0.0.0.0/0
+        Description: Allow all HTTPS outbound traffic to enable prowler scan.
       Tags:
         - Key: Name
           Value: ProwlerSG
@@ -252,20 +292,46 @@ Resources:
             Statement:
             - Effect: Allow
               Action:
-                - 'ds:ListAuthorizedApplications'
-                - 'ec2:GetEbsEncryptionByDefault'
-                - 'ecr:Describe*'
-                - 'elasticfilesystem:DescribeBackupPolicy'
-                - 'glue:GetConnections'
-                - 'glue:GetSecurityConfiguration'
-                - 'glue:SearchTables'
-                - 'lambda:GetFunction'
-                - 's3:GetAccountPublicAccessBlock'
-                - 'shield:DescribeProtection'
-                - 'shield:GetSubscriptionState'
-                - 'ssm:GetDocument'
-                - 'support:Describe*'
-                - 'tag:GetTagKeys'
+                - account:Get*
+                - apigateway:GET
+                - appstream:Describe*
+                - appstream:List*
+                - backup:List*
+                - cloudtrail:GetInsightSelectors
+                - codeartifact:List*
+                - codebuild:BatchGet*
+                - codebuild:ListReportGroups
+                - cognito-idp:GetUserPoolMfaConfig
+                - dlm:Get*
+                - drs:Describe*
+                - ds:Get*
+                - ds:Describe*
+                - ds:List*
+                - dynamodb:GetResourcePolicy
+                - ec2:GetEbsEncryptionByDefault
+                - ec2:GetSnapshotBlockPublicAccessState
+                - ec2:GetInstanceMetadataDefaults
+                - ecr:Describe*
+                - ecr:GetRegistryScanningConfiguration
+                - elasticfilesystem:DescribeBackupPolicy
+                - glue:GetConnections
+                - glue:GetSecurityConfiguration*
+                - glue:SearchTables
+                - lambda:GetFunction*
+                - logs:FilterLogEvents
+                - lightsail:GetRelationalDatabases
+                - macie2:GetMacieSession
+                - macie2:GetAutomatedDiscoveryConfiguration
+                - s3:GetAccountPublicAccessBlock
+                - shield:DescribeProtection
+                - shield:GetSubscriptionState
+                - securityhub:BatchImportFindings
+                - securityhub:GetFindings
+                - ssm:GetDocument
+                - ssm-incidents:List*
+                - support:Describe*
+                - tag:GetTagKeys
+                - wellarchitected:List*
               Resource: '*'
         - PolicyName: ProwlerCopyToS3
           PolicyDocument:
