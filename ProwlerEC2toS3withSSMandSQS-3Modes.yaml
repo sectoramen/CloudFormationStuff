@@ -226,16 +226,16 @@ Resources:
                 then
                   for account in `aws organizations list-accounts --query 'Accounts[*].[Id]' --output text`
                   do
-                    ./prowler ${prowler_options} -R "arn:aws:iam::$account:role/${prowler_role}" >> ./output/prowler.log
+                    prowler ${prowler_options} -R "arn:aws:iam::$account:role/${prowler_role}" >> ./output/prowler.log
                   done               
               elif [ ${aws_accounts} != "" ];
                 then 
                   for account in ${aws_accounts}
                   do
-                    ./prowler ${prowler_options} -R "arn:aws:iam::$account:role/${prowler_role}" >> ./output/prowler.log
+                    prowler ${prowler_options} -R "arn:aws:iam::$account:role/${prowler_role}" >> ./output/prowler.log
                   done        
               else
-                ./prowler ${prowler_options} >> ./output/prowler.log
+                prowler ${prowler_options} >> ./output/prowler.log
               fi
               zip -r prowler.zip output/
               aws s3 cp ./prowler.zip s3://${bucket_name}
